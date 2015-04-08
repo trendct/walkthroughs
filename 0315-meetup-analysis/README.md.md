@@ -399,7 +399,7 @@ WaterburyTotal <- join(WaterburyTotal, Waterbury2014, by="Category")
 Waterbury2015 <- ctmeet %>% filter(Area=="Waterbury" & Year==2015) %>% group_by(Category) %>% summarise(y2015=length(Category))
 WaterburyTotal <- join(WaterburyTotal, Waterbury2015, by="Category")
 
-write.csv(WaterburyTotal,"Waterbury_years.csv"
+write.csv(WaterburyTotal,"Waterbury_years.csv")
 ```
 
 ##What next
