@@ -36,7 +36,7 @@ def main():
 def get_results(params):
 
 	request = requests.get("http://api.meetup.com/2/groups",params=params)
-        data = request.json()
+    data = request.json()
 	
 	return data
 
