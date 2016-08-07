@@ -1,50 +1,17 @@
----
-title: "Spatial analysis of census and traffic stop data using R"
-author: "Andrew Ba Tran"
-date: "August 6, 2016"
-output: html_document
----
-
-We use R at Trend CT not just for data analysis and creating data visualizations, but also for working with spatial analysis and creating geographic graphics.
-
-If you have a data set with latitude and longitude data, [it's easy](http://trendct.org/2015/06/26/tutorial-how-to-put-dots-on-a-leaflet-map-with-r/) to just throw it on a map with a dot for every instance. But really what does it serve? You see the intensity of the cluster of dots over the area but that's it. If there's no context or explanation it's a flashy visualization and that's it.
-
-This tutorial will show you how to dig deeper and tell better stories with location data.
-
-We'll be working with traffic stop data.
-
-We'll figure out which town and census tract each stop occurred in and then pull in demographic data from the Census to determine what types of neighborhoods police tend to pull people over more often.
-
-You could conduct this analysis using software like ArcGIS or QGIS but we're going to be doing it all in R.
-
-It is better to stay in a single environment from data importing, to analysis, to exporting visualizations because the produced scripts make it easier for others (including your future self) to replicate and verify your work in the future.
-
-###Difficulty level
-
-Advanced. We'll be using many packages, including dplyr (for [pipes](http://trendct.org/2015/06/26/tutorial-how-to-put-dots-on-a-leaflet-map-with-r/#chapterTOC2), as well as working with [shape files](http://trendct.org/2015/05/29/tutorial-how-to-merge-data-from-two-different-maps-using-qgis/) and [census data](http://trendct.org/2015/08/14/tutorial-how-to-understand-and-retrieve-census-data-for-beginners/). You should have a basic understanding of these concepts before continuing.
-
-Go through the [beginner tutorial](http://trendct.org/2015/06/12/r-for-beginners-how-to-transition-from-excel-to-r/) to get R and RStudio [installed](http://trendct.org/2015/06/12/r-for-beginners-how-to-transition-from-excel-to-r/#chapterTOC1) before you begin.
-
-Download the dataset, set the working directory, and follow along. You can also skip straight to the full script.
-
-###Importing and preparing the data
-
-```{r importing, warning=F, message=F}
 
 # Bring in the data
-stops <- read.csv("https://github.com/trendct/walkthroughs/raw/master/spatial-analysis-r-walkthrough/data/hamden_stops.csv", stringsAsFactors=FALSE)
+stops <- read.csv("data/hamden_stops.csv", stringsAsFactors=FALSE)
 
 # Check and eliminate the rows that don't have location information 
 stops <- stops[!is.na(stops$InterventionLocationLatitude),]
 
 # Add a column to identifying a driver as white or a minority
 stops$ethnicity <- ifelse(((stops$SubjectRaceCode ==  "W") & (stops$SubjectEthnicityCode =="N")), "White", "Minority")
-```
+
 
 
 ###Importing the shapefiles
 
-```{r shapefiles, warning=F, message=F}
 # Bring in the shape files for census tracts
 
 require(rgdal)
@@ -71,11 +38,10 @@ kable(head(towntracts))
 # While towntracts_only is a Large SpatialPolygonsDataFrame
 
 # It's for rendering the spatial data in R graphically
-```
+
 
 ###Mapping the data
 
-```{r mapping_data, warning=F, message=F, fig.width=9}
 # We only need the columns with the latitude and longitude
 coords <- stops[c("InterventionLocationLongitude", "InterventionLocationLatitude")]
 
@@ -97,12 +63,11 @@ plot(towntracts_only)
 
 # Adding the coordinates of the traffic stops
 plot(sp, col="red" , add=TRUE)
-```
+
 
 
 ###Points in a polygon
 
-```{r points_in_polygone, warning=F, message=F, fig.width=9}
 # Calculating points in a polygon
 
 by_tract <- over(sp, towntracts_only)
@@ -156,11 +121,10 @@ by_tract <- left_join(by_tract, tracts2towns)
 kable(head(by_tract,5))
 
 # Why did we do this? Because Hamden sometimes made traffic stops outside of its jurisdiction. Now we can tell for sure which towns police overextended themselves.
-```
+
 
 ###Making a choropleth
 
-```{r choropleth, warning=F, message=F, fig.width=9}
 # Now we can finally map it
 
 # Join the by_tract points to polygon dataframe to the original census tracts dataframe
@@ -213,9 +177,8 @@ tm_ct <- ggplot() +
 print(tm_ct)
 
 # That's much clearer
-```
 
-```{r minorities}
+
 # Before we move on, we need to also calculate the number of minority stops in Hamden census tracts
 
 coords <- subset(stops, ethnicity=="Minority")
@@ -242,12 +205,11 @@ kable(head(joined_tracts))
 
 joined_tracts$minority_p <- round(joined_tracts$minority/joined_tracts$total*100,2)
 kable(head(joined_tracts))
-```
+
 
 
 ###Importing census data
 
-```{r importing_census, warning=F, message=F}
 # We'll be using the censusapi package from Hanna Recht
 # https://github.com/hrecht/censusapi
 # Some documentation
@@ -266,10 +228,10 @@ source("keys.R")
 # Apply for one here http://api.census.gov/data/key_signup.html
 
 race_tracts <- getCensus(name="acs5",
-    vintage=2014,
-    key=census_key,
-    vars=c("NAME", "B02001_001E", "B02001_002E"),
-    region="tract:*", regionin="state:09")
+                         vintage=2014,
+                         key=census_key,
+                         vars=c("NAME", "B02001_001E", "B02001_002E"),
+                         region="tract:*", regionin="state:09")
 
 # What did we just do?
 
@@ -289,12 +251,11 @@ race_tracts$id <- paste0(race_tracts$state, race_tracts$county, race_tracts$trac
 # Renaming the column names for clarity
 colnames(race_tracts) <- c("state_code", "county_code", "tract_code", "total_pop", "white_pop", "id")
 
-```
+
 
 
 ###Calculating disparity
 
-```{r calculating_disparity, warning=F, message=F}
 # Making some calculations
 
 # Determining the minority population by subtracting the white population from the total
@@ -316,12 +277,10 @@ joined_tracts$min_disp <- joined_tracts$minority_p - joined_tracts$minority_pop_
 
 kable(head(joined_tracts[c("tract_code", "min_disp")]))
 
-```
+
 
 
 ###Visualizing geographic disparity
-
-```{r viz_disparity, warning=F, message=F, fig.width=9}
 
 mapping_disparity <- left_join(towntracts, joined_tracts)
 mapping_disparity <- subset(mapping_disparity, !is.na(min_disp))
@@ -341,13 +300,12 @@ pm_ct <- pm_ct + theme(plot.subtitle=element_text(face="italic", size=9, margin=
 pm_ct <- pm_ct + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
 pm_ct <- pm_ct + theme(legend.key.size = unit(1, "cm"))
 print(pm_ct)
-```
+
 
 ### Visualizing geographic disparity
 
 #### With annotations
 
-```{r viz_disparity_extra, warning=F, message=F, fig.width=9}
 pm_ct <- ggplot() 
 pm_ct <- pm_ct + geom_polygon(data = mapping_disparity, aes(x=long, y=lat, group=group, fill=min_disp/100), color="white", size=.25)
 pm_ct <- pm_ct + geom_polygon(data = town_borders, aes(x=long, y=lat, group=group), fill=NA, color = "black", size=0.5)
@@ -373,4 +331,3 @@ pm_ct <- pm_ct + annotate("point", x = -72.83, y = 41.375, colour="white", size=
 
 print(pm_ct)
 
-```

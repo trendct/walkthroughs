@@ -23,7 +23,7 @@ source("keys.R")
 #devtools::install_github("hrecht/censusapi")
 library("censusapi")
 
-stops <- read.csv("data/mega.csv", stringsAsFactors=FALSE)
+stops <- read.csv("https://github.com/trendct/walkthroughs/raw/master/spatial-analysis-r-walkthrough/data/hamden_stops.csv", stringsAsFactors=FALSE)
 stops <- stops[!is.na(stops$InterventionLocationLatitude),]
 
 stops$timeofday <- as.POSIXct(as.Date(stops$InterventionTime, origin="1899-12-30"))
